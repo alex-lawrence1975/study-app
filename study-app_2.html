@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study">
+<meta name="theme-color" content="#0c0c0f">
+<title>Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0c0c0f;
+  --s1: #13131a;
+  --s2: #1a1a24;
+  --s3: #22222f;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f2f2f5;
+  --muted: #606070;
+  --muted2: #8888a0;
+  --accent: #7c6aff;
+  --accent2: #a599ff;
+  --green: #3dd68c;
+  --amber: #f0a043;
+  --red: #f06060;
+  --r: 14px;
+  --r2: 10px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+
+body {
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── PAGES ── */
+.page { position: absolute; inset: 0; display: flex; flex-direction: column; transition: transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s; overflow: hidden; }
+.page.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+#page-focus { z-index: 1; }
+#page-plan { z-index: 2; }
+
+/* ── HEADER ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+.header-sub { font-size: 12px; color: var(--muted2); margin-top: 1px; font-family: 'JetBrains Mono', monospace; font-weight: 300; }
+.nav-btn {
+  background: var(--s2); border: 1px solid var(--border2); border-radius: 10px;
+  color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 500;
+  padding: 8px 14px; cursor: pointer; transition: all 0.15s;
+}
+.nav-btn:active { opacity: 0.7; transform: scale(0.97); }
+.back-btn { display: flex; align-items: center; gap: 6px; }
+
+/* ── SCROLL AREAS ── */
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 16px 20px; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ── FOCUS PAGE ── */
+.active-task-card {
+  background: linear-gradient(135deg, var(--s2) 0%, var(--s3) 100%);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 18px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.active-task-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: var(--r) var(--r) 0 0;
+}
+.atc-label { font-size: 10px; color: var(--muted2); letter-spacing: 1px; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+.atc-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.atc-sub { font-size: 12px; color: var(--muted2); margin-bottom: 16px; }
+.atc-timer { font-family: 'JetBrains Mono', monospace; font-size: 48px; font-weight: 300; letter-spacing: -2px; color: var(--text); margin-bottom: 16px; }
+.atc-controls { display: flex; gap: 10px; }
+.btn-go {
+  flex: 1; padding: 13px; border: none; border-radius: var(--r2);
+  background: var(--accent); color: #fff; font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.btn-go:active { transform: scale(0.97); opacity: 0.9; }
+.btn-go.running { background: var(--s3); border: 1px solid var(--border2); color: var(--muted2); }
+.btn-stop {
+  padding: 13px 18px; border: 1px solid var(--border2); border-radius: var(--r2);
+  background: transparent; color: var(--muted2); font-family: 'Syne', sans-serif;
+  font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.btn-stop:active { opacity: 0.7; }
+.no-task-card {
+  background: var(--s1); border: 1px dashed var(--border2); border-radius: var(--r);
+  padding: 28px; text-align: center; margin-bottom: 16px;
+}
+.no-task-card p { font-size: 14px; color: var(--muted2); line-height: 1.6; }
+.no-task-card p strong { color: var(--muted2); font-weight: 500; }
+
+/* ── TASK LIST ── */
+.section-label {
+  font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; margin-top: 4px;
+}
+.task-card {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  margin-bottom: 8px; overflow: hidden; cursor: pointer; transition: all 0.15s;
+}
+.task-card:active { transform: scale(0.99); }
+.task-card.selected { border-color: var(--accent); background: var(--s2); }
+.task-card.done-card { opacity: 0.45; }
+.tc-main { display: flex; align-items: center; gap: 12px; padding: 13px 14px; }
+.tc-color { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+.tc-info { flex: 1; min-width: 0; }
+.tc-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-name.done-text { text-decoration: line-through; color: var(--muted2); }
+.tc-meta { display: flex; gap: 10px; margin-top: 3px; align-items: center; }
+.tc-est { font-size: 11px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; }
+.tc-spent { font-size: 11px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; }
+.tc-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.tc-check {
+  width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border2);
+  background: transparent; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; transition: all 0.15s;
+}
+.tc-check.done { background: var(--green); border-color: var(--green); }
+.tc-check.done::after { content: ''; width: 7px; height: 4px; border-left: 2px solid #0c0c0f; border-bottom: 2px solid #0c0c0f; transform: rotate(-45deg) translateY(-1px); display: block; }
+.tc-badge {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 400;
+  padding: 3px 7px; border-radius: 20px; background: var(--s3); color: var(--muted2);
+}
+.tc-badge.active-badge { background: rgba(124,106,255,0.15); color: var(--accent2); }
+
+/* subtasks */
+.subtasks { border-top: 1px solid var(--border); }
+.subtask-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 29px; border-bottom: 1px solid var(--border); }
+.subtask-row:last-child { border-bottom: none; }
+.st-check {
+  width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border2);
+  background: transparent; cursor: pointer; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 9px; transition: all 0.15s;
+}
+.st-check.done { background: var(--green); border-color: var(--green); color: #0c0c0f; }
+.st-name { flex: 1; font-size: 13px; color: var(--muted2); }
+.st-name.done { text-decoration: line-through; color: var(--muted); }
+.st-est { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* ── LOG ── */
+.log-entry {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--s1); border-radius: var(--r2);
+  margin-bottom: 6px; border: 1px solid var(--border);
+}
+.log-name { font-size: 13px; color: var(--muted2); }
+.log-time { font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--accent2); }
+.log-ts { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.log-left { display: flex; flex-direction: column; gap: 2px; }
+
+/* ── PLAN PAGE ── */
+.plan-form { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 16px; }
+.form-row { margin-bottom: 12px; }
+.form-row:last-child { margin-bottom: 0; }
+.form-label { font-size: 11px; color: var(--muted2); letter-spacing: 0.5px; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+.form-input {
+  width: 100%; background: var(--s2); border: 1px solid var(--border2); border-radius: var(--r2);
+  padding: 11px 14px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 14px;
+  outline: none; -webkit-appearance: none; transition: border 0.15s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--muted); }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.color-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.color-dot {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.color-dot.selected { border-color: white; transform: scale(1.15); }
+
+.subtask-builder { margin-bottom: 12px; }
+.st-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.st-input-row .form-input { flex: 1; }
+.st-input-row .form-input.est-in { width: 80px; flex: none; }
+.st-chips { display: flex; flex-direction: column; gap: 6px; }
+.st-chip {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--s2); border-radius: var(--r2); border: 1px solid var(--border);
+}
+.st-chip span { flex: 1; font-size: 13px; color: var(--muted2); }
+.st-chip .est { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.st-chip .del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; }
+
+.btn-primary {
+  width: 100%; padding: 14px; border: none; border-radius: var(--r2);
+  background: var(--accent); color: #fff; font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.btn-primary:active { opacity: 0.85; transform: scale(0.99); }
+
+.plan-list-item {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+}
+.pli-color { width: 4px; height: 40px; border-radius: 2px; flex-shrink: 0; }
+.pli-info { flex: 1; min-width: 0; }
+.pli-name { font-size: 14px; font-weight: 600; }
+.pli-meta { font-size: 12px; color: var(--muted2); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.pli-del { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 4px; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  display: flex; border-top: 1px solid var(--border); flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: var(--bg);
+}
+.bnav-btn {
+  flex: 1; padding: 14px 0 12px; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; background: transparent; border: none; cursor: pointer;
+  color: var(--muted); font-family: 'Syne', sans-serif; font-size: 10px;
+  letter-spacing: 0.5px; transition: color 0.15s;
+}
+.bnav-btn.active { color: var(--accent2); }
+.bnav-icon { font-size: 20px; line-height: 1; }
+
+/* ── EMPTY STATES ── */
+.empty { text-align: center; padding: 32px 20px; color: var(--muted2); font-size: 13px; line-height: 1.7; }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { height: 3px; background: var(--s2); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.task-card { animation: fadeIn 0.25s ease; }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: FOCUS -->
+<div class="page" id="page-focus">
+  <div class="header">
+    <div>
+      <div class="header-title">Today</div>
+      <div class="header-sub" id="header-date"></div>
+    </div>
+    <button class="nav-btn" onclick="goTo('plan')">+ Plan ↗</button>
+  </div>
+
+  <div class="scroll" id="focus-scroll">
+    <!-- Active timer card -->
+    <div id="active-card"></div>
+
+    <!-- Task list -->
+    <div class="section-label" id="tasks-section-label" style="display:none">Your tasks — tap to focus</div>
+    <div id="task-list-focus"></div>
+
+    <!-- Time log -->
+    <div id="log-section" style="display:none">
+      <div class="section-label" style="margin-top:12px">Session log</div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: PLAN -->
+<div class="page hidden" id="page-plan">
+  <div class="header">
+    <div>
+      <div class="header-title">Plan</div>
+      <div class="header-sub">Add tasks & subtasks</div>
+    </div>
+    <button class="nav-btn back-btn" onclick="goTo('focus')">← Back</button>
+  </div>
+
+  <div class="scroll">
+    <div class="plan-form">
+      <div class="form-row">
+        <div class="form-label">Task name</div>
+        <input class="form-input" id="inp-name" placeholder="e.g. Essay draft, Gym, Study for exam…" maxlength="60">
+      </div>
+      <div class="form-row">
+        <div class="form-label">Category / subject</div>
+        <input class="form-input" id="inp-cat" placeholder="e.g. Economics, Health, Personal…" maxlength="40">
+      </div>
+      <div class="form-row-2">
+        <div>
+          <div class="form-label">Est. hours</div>
+          <input class="form-input" id="inp-hours" type="number" placeholder="2" min="0" max="99">
+        </div>
+        <div>
+          <div class="form-label">Est. minutes</div>
+          <input class="form-input" id="inp-mins" type="number" placeholder="30" min="0" max="59">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">Colour tag</div>
+        <div class="color-row" id="color-picker"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Subtasks (optional)</div>
+        <div class="subtask-builder">
+          <div class="st-input-row">
+            <input class="form-input" id="inp-st-name" placeholder="Subtask name" maxlength="60" onkeydown="if(event.key==='Enter')addSubtaskDraft()">
+            <input class="form-input est-in" id="inp-st-est" type="number" placeholder="min" min="1" max="999">
+            <button class="nav-btn" onclick="addSubtaskDraft()" style="white-space:nowrap">+ Add</button>
+          </div>
+          <div class="st-chips" id="st-chips"></div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveTask()">Add to task list</button>
+    </div>
+
+    <!-- Existing tasks in plan view -->
+    <div class="section-label" id="plan-list-label" style="display:none">All tasks</div>
+    <div id="plan-list"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="bnav-btn active" id="bnav-focus" onclick="goTo('focus')">
+    <span class="bnav-icon">⏱</span>
+    <span>Focus</span>
+  </button>
+  <button class="bnav-btn" id="bnav-plan" onclick="goTo('plan')">
+    <span class="bnav-icon">📋</span>
+    <span>Plan</span>
+  </button>
+</div>
+
+<script>
+// ── STATE ──
+const COLORS = ['#7c6aff','#3dd68c','#f0a043','#f06060','#40b4f7','#e060d0','#f0d440','#a0a0c0'];
+let tasks = JSON.parse(localStorage.getItem('study_tasks') || '[]');
+let log = JSON.parse(localStorage.getItem('study_log') || '[]');
+let activeId = localStorage.getItem('study_active') || null;
+let timerSeconds = parseInt(localStorage.getItem('study_timer') || '0');
+let running = false;
+let ticker = null;
+let draftSubtasks = [];
+let selectedColor = COLORS[0];
+
+// ── HELPERS ──
+function save() {
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  localStorage.setItem('study_log', JSON.stringify(log));
+  if (activeId) localStorage.setItem('study_active', activeId);
+  else localStorage.removeItem('study_active');
+  localStorage.setItem('study_timer', timerSeconds);
+}
+
+function fmt(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function fmtEst(totalMins) {
+  if (!totalMins) return '—';
+  const h = Math.floor(totalMins/60), m = totalMins%60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+function fmtTime(secs) {
+  if (secs < 60) return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs/60)}m ${secs%60}s`;
+  return `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`;
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function today() {
+  return new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'});
+}
+
+function nowStr() {
+  return new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+}
+
+function getTask(id) { return tasks.find(t=>t.id===id); }
+
+// ── NAVIGATION ──
+function goTo(page) {
+  document.getElementById('page-focus').classList.toggle('hidden', page !== 'focus');
+  document.getElementById('page-plan').classList.toggle('hidden', page !== 'plan');
+  document.getElementById('bnav-focus').classList.toggle('active', page === 'focus');
+  document.getElementById('bnav-plan').classList.toggle('active', page === 'plan');
+  if (page === 'plan') renderPlanList();
+}
+
+// ── TIMER ──
+function startTimer() {
+  if (running || !activeId) return;
+  running = true;
+  ticker = setInterval(() => {
+    timerSeconds++;
+    const t = getTask(activeId);
+    if (t) t.spentSeconds = (t.spentSeconds||0) + 1;
+    save();
+    renderActiveCard();
+    renderTaskList();
+  }, 1000);
+  renderActiveCard();
+}
+
+function pauseTimer() {
+  if (!running) return;
+  running = false;
+  clearInterval(ticker);
+  ticker = null;
+  // log the session
+  if (timerSeconds > 0 && activeId) {
+    const t = getTask(activeId);
+    if (t) {
+      log.unshift({ id: genId(), taskId: activeId, taskName: t.name, color: t.color, duration: timerSeconds, time: nowStr() });
+      if (log.length > 50) log.pop();
+      save();
+    }
+  }
+  renderActiveCard();
+  renderLog();
+}
+
+function stopTimer() {
+  pauseTimer();
+  timerSeconds = 0;
+  save();
+  renderActiveCard();
+}
+
+function selectTask(id) {
+  if (running) pauseTimer();
+  if (activeId === id) {
+    activeId = null;
+    timerSeconds = 0;
+  } else {
+    activeId = id;
+    timerSeconds = 0;
+  }
+  save();
+  renderActiveCard();
+  renderTaskList();
+}
+
+// ── RENDER: FOCUS PAGE ──
+function renderActiveCard() {
+  const el = document.getElementById('active-card');
+  if (!activeId) {
+    el.innerHTML = `<div class="no-task-card"><p>No task selected.<br><strong>Tap a task below</strong> to start focusing on it.</p></div>`;
+    return;
+  }
+  const t = getTask(activeId);
+  if (!t) { activeId = null; el.innerHTML = ''; return; }
+  const totalEst = (t.estHours||0)*60 + (t.estMins||0);
+  const spent = t.spentSeconds||0;
+  const spentMins = spent/60;
+  const pct = totalEst > 0 ? Math.min(100, Math.round(spentMins/totalEst*100)) : 0;
+  el.innerHTML = `
+    <div class="active-task-card">
+      <div class="atc-label">Now focusing on</div>
+      <div class="atc-name">${t.name}</div>
+      <div class="atc-sub">${t.category||''} ${totalEst ? '· Est. '+fmtEst(totalEst) : ''} ${spent > 0 ? '· Spent '+fmtTime(spent) : ''}</div>
+      <div class="atc-timer" id="live-timer">${fmt(timerSeconds)}</div>
+      ${totalEst ? `<div class="progress-wrap"><div class="progress-bar" style="width:${pct}%;background:${t.color||'var(--accent)'}"></div></div><div style="font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:6px;margin-bottom:10px">${pct}% of estimate used</div>` : '<div style="margin-bottom:10px"></div>'}
+      <div class="atc-controls">
+        <button class="btn-go ${running?'running':''}" onclick="${running ? 'pauseTimer()' : 'startTimer()'}">${running ? 'Pause' : 'Start'}</button>
+        <button class="btn-stop" onclick="stopTimer()">Stop & log</button>
+      </div>
+    </div>`;
+}
+
+function renderTaskList() {
+  const el = document.getElementById('task-list-focus');
+  const lbl = document.getElementById('tasks-section-label');
+  const pending = tasks.filter(t => !t.done);
+  const done = tasks.filter(t => t.done);
+  const all = [...pending, ...done];
+
+  if (all.length === 0) {
+    lbl.style.display = 'none';
+    el.innerHTML = `<div class="empty">No tasks yet.<br>Tap <strong>+ Plan</strong> to add your first task.</div>`;
+    return;
+  }
+  lbl.style.display = 'block';
+
+  el.innerHTML = all.map(t => {
+    const isActive = t.id === activeId;
+    const totalEst = (t.estHours||0)*60 + (t.estMins||0);
+    const spent = t.spentSeconds || 0;
+    const stTotal = (t.subtasks||[]).length;
+    const stDone = (t.subtasks||[]).filter(s=>s.done).length;
+    const subtasksHtml = (t.subtasks||[]).length > 0 ? `
+      <div class="subtasks">
+        ${t.subtasks.map(s => `
+          <div class="subtask-row">
+            <button class="st-check ${s.done?'done':''}" onclick="event.stopPropagation();toggleSubtask('${t.id}','${s.id}')">${s.done?'✓':''}</button>
+            <span class="st-name ${s.done?'done':''}">${s.name}</span>
+            ${s.estMins ? `<span class="st-est">${fmtEst(s.estMins)}</span>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+    return `
+      <div class="task-card ${isActive?'selected':''} ${t.done?'done-card':''}" onclick="selectTask('${t.id}')">
+        <div class="tc-main">
+          <div class="tc-color" style="background:${t.color||'var(--accent)'}"></div>
+          <div class="tc-info">
+            <div class="tc-name ${t.done?'done-text':''}">${t.name}</div>
+            <div class="tc-meta">
+              ${t.category ? `<span class="tc-est">${t.category}</span>` : ''}
+              ${totalEst ? `<span class="tc-est">Est: ${fmtEst(totalEst)}</span>` : ''}
+              ${spent > 0 ? `<span class="tc-spent">Spent: ${fmtTime(spent)}</span>` : ''}
+              ${stTotal > 0 ? `<span class="tc-est">${stDone}/${stTotal} subtasks</span>` : ''}
+            </div>
+          </div>
+          <div class="tc-right">
+            ${isActive ? '<span class="tc-badge active-badge">active</span>' : ''}
+            <button class="tc-check ${t.done?'done':''}" onclick="event.stopPropagation();toggleTask('${t.id}')"></button>
+          </div>
+        </div>
+        ${subtasksHtml}
+      </div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const section = document.getElementById('log-section');
+  const el = document.getElementById('log-list');
+  if (log.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  el.innerHTML = log.slice(0,20).map(e => `
+    <div class="log-entry">
+      <div class="log-left">
+        <div class="log-name" style="border-left:2px solid ${e.color||'var(--accent)'};padding-left:8px">${e.taskName}</div>
+        <div class="log-ts">${e.time}</div>
+      </div>
+      <div class="log-time">${fmtTime(e.duration)}</div>
+    </div>`).join('');
+}
+
+// ── RENDER: PLAN PAGE ──
+function buildColorPicker() {
+  const el = document.getElementById('color-picker');
+  el.innerHTML = COLORS.map(c => `
+    <div class="color-dot ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>`).join('');
+}
+
+function selectColor(c) {
+  selectedColor = c;
+  buildColorPicker();
+}
+
+function addSubtaskDraft() {
+  const name = document.getElementById('inp-st-name').value.trim();
+  const est = parseInt(document.getElementById('inp-st-est').value) || 0;
+  if (!name) return;
+  draftSubtasks.push({ id: genId(), name, estMins: est, done: false });
+  document.getElementById('inp-st-name').value = '';
+  document.getElementById('inp-st-est').value = '';
+  renderDraftSubtasks();
+}
+
+function removeSubtaskDraft(id) {
+  draftSubtasks = draftSubtasks.filter(s=>s.id!==id);
+  renderDraftSubtasks();
+}
+
+function renderDraftSubtasks() {
+  document.getElementById('st-chips').innerHTML = draftSubtasks.map(s => `
+    <div class="st-chip">
+      <span>${s.name}</span>
+      ${s.estMins ? `<span class="est">${fmtEst(s.estMins)}</span>` : ''}
+      <button class="del" onclick="removeSubtaskDraft('${s.id}')">×</button>
+    </div>`).join('');
+}
+
+function saveTask() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { document.getElementById('inp-name').focus(); return; }
+  const h = parseInt(document.getElementById('inp-hours').value) || 0;
+  const m = parseInt(document.getElementById('inp-mins').value) || 0;
+  const task = {
+    id: genId(), name,
+    category: document.getElementById('inp-cat').value.trim(),
+    estHours: h, estMins: m,
+    color: selectedColor,
+    subtasks: [...draftSubtasks],
+    done: false, spentSeconds: 0,
+    created: Date.now()
+  };
+  tasks.push(task);
+  draftSubtasks = [];
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-cat').value = '';
+  document.getElementById('inp-hours').value = '';
+  document.getElementById('inp-mins').value = '';
+  renderDraftSubtasks();
+  save();
+  renderPlanList();
+  renderTaskList();
+  renderActiveCard();
+}
+
+function renderPlanList() {
+  const lbl = document.getElementById('plan-list-label');
+  const el = document.getElementById('plan-list');
+  if (tasks.length === 0) { lbl.style.display='none'; el.innerHTML=''; return; }
+  lbl.style.display='block';
+  el.innerHTML = tasks.map(t => {
+    const totalEst = (t.estHours||0)*60 + (t.estMins||0);
+    const stCount = (t.subtasks||[]).length;
+    return `
+      <div class="plan-list-item">
+        <div class="pli-color" style="background:${t.color}"></div>
+        <div class="pli-info">
+          <div class="pli-name">${t.name}</div>
+          <div class="pli-meta">${t.category||'No category'} ${totalEst?'· '+fmtEst(totalEst):''} ${stCount?'· '+stCount+' subtasks':''}</div>
+        </div>
+        <button class="pli-del" onclick="deleteTask('${t.id}')">×</button>
+      </div>`;
+  }).join('');
+}
+
+function toggleTask(id) {
+  const t = getTask(id);
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done && activeId === id) { stopTimer(); activeId = null; }
+  save(); renderTaskList(); renderActiveCard();
+}
+
+function toggleSubtask(taskId, stId) {
+  const t = getTask(taskId);
+  if (!t) return;
+  const s = t.subtasks.find(s=>s.id===stId);
+  if (s) s.done = !s.done;
+  save(); renderTaskList();
+}
+
+function deleteTask(id) {
+  if (activeId === id) { stopTimer(); activeId = null; }
+  tasks = tasks.filter(t=>t.id!==id);
+  save(); renderPlanList(); renderTaskList(); renderActiveCard();
+}
+
+// ── INIT ──
+document.getElementById('header-date').textContent = today();
+buildColorPicker();
+renderActiveCard();
+renderTaskList();
+renderLog();
+</script>
+</body>
+</html>
